@@ -40,21 +40,28 @@ instance (Num a, Eq a, Show a) => Show (Poly a) where
 
 -- Exercise 4 -----------------------------------------
 
+mzip :: a -> (a -> a -> a) -> [a] -> [a] -> [a]
+mzip d f (n : ns) (y : ys) = f n y : mzip d f ns ys
+mzip d f [] (y : ys) = f d y : mzip d f [] ys
+mzip d f (n : ns) [] = f n d : mzip d f ns []
+mzip _ _ _ _ = []
+
 plus :: (Num a) => Poly a -> Poly a -> Poly a
-plus = undefined
+plus (P f) (P s) = P $ mzip 0 (+) f s
 
 -- Exercise 5 -----------------------------------------
 
 times :: (Num a) => Poly a -> Poly a -> Poly a
-times = undefined
+times (P f) (P s) = sum $ zipWith (\d y -> P $ replicate d 0 ++ map (* y) s) [0 ..] f
 
 -- Exercise 6 -----------------------------------------
 
 instance (Num a) => Num (Poly a) where
   (+) = plus
   (*) = times
-  negate = undefined
-  fromInteger = undefined
+  negate (P f) = P $ map (0 -) f
+  fromInteger :: (Num a) => Integer -> Poly a
+  fromInteger n = P [fromInteger n]
 
   -- No meaningful definitions exist
   abs = undefined
@@ -63,16 +70,21 @@ instance (Num a) => Num (Poly a) where
 -- Exercise 7 -----------------------------------------
 
 applyP :: (Num a) => Poly a -> a -> a
-applyP = undefined
+applyP (P f) n = sum $ zipWith (\d y -> y * product (replicate d n)) [0 ..] f
 
 -- Exercise 8 -----------------------------------------
 
 class (Num a) => Differentiable a where
   deriv :: a -> a
   nderiv :: Int -> a -> a
-  nderiv = undefined
+  nderiv 1 y = deriv y
+  nderiv n y = nderiv (n - 1) y
 
 -- Exercise 9 -----------------------------------------
 
 instance (Num a) => Differentiable (Poly a) where
-  deriv = undefined
+  deriv (P f) = case diff of
+    [] -> P [0]
+    _ -> P diff
+    where
+      diff = zipWith (\m n -> fromInteger m * n) [1 ..] (tail f)
