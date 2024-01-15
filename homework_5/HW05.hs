@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -Wall #-}
 
 module HW05 where
@@ -12,8 +11,7 @@ import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Ord (Down (Down), comparing)
 import Data.Set qualified as Set
-import Debug.Trace
-import Parser (FromJSON, TId, ToJSON, Transaction (..), decode)
+import Parser (FromJSON, TId, ToJSON, Transaction (..), decode, encode)
 import System.Environment (getArgs)
 
 -- Exercise 1 -----------------------------------------
@@ -64,12 +62,13 @@ getCriminal flowMap = maybe "" fst (Map.lookupMax flowMap)
 undoTs :: Map String Integer -> [TId] -> [Transaction]
 undoTs flowMap ids
   | Map.null flowMap = []
-  | otherwise = map fst items ++ undoTs (Map.fromList $ drop dropSize payees ++ drop dropSize payers ++ concatMap (\(_, (f, t)) -> [f, t]) items) ids
+  | otherwise = map fst items ++ undoTs (Map.fromList $ drop dropSize payees ++ drop dropSize payers ++ concatMap (\(_, (f, t)) -> [f, t]) items) newIds
   where
-    items = zipWith (\payer payee -> makeReverseT payer payee "1") payers payees
+    items = zipWith3 makeReverseT payers payees ids
     payers = sortBy (comparing (Down . snd)) $ filter ((> 0) . snd) $ Map.toList flowMap
     payees = sort $ filter ((< 0) . snd) $ Map.toList flowMap
     dropSize = min (length payers) (length payees)
+    newIds = drop (length items) ids
     makeReverseT :: (String, Integer) -> (String, Integer) -> TId -> (Transaction, ((String, Integer), (String, Integer)))
     makeReverseT (fN, fB) (tN, tB) tId = (Transaction fN tN amount tId, ((fN, fB - amount), (tN, tB + amount)))
       where
@@ -78,7 +77,7 @@ undoTs flowMap ids
 -- Exercise 8 -----------------------------------------
 
 writeJSON :: (ToJSON a) => FilePath -> a -> IO ()
-writeJSON = undefined
+writeJSON path d = BS.writeFile path $ encode d
 
 -- Exercise 9 -----------------------------------------
 
